@@ -1,0 +1,173 @@
+---
+title: "predictive project"
+author: "AshishBatra"
+date: "updated_November 30, 2016"
+output: html_document
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,cache = TRUE)
+
+#install.packages('data.table')
+library(data.table)
+#install.packages('magrittr')
+library(magrittr)
+#install.packages('dplyr')
+library(dplyr) #Attaching dplyr library
+#install.packages('tidyr')
+library(tidyr) #Attaching tidyr library
+#install.packages("ggplot2")
+library(ggplot2)
+
+```
+
+```{r setup, include=FALSE}
+setwd('C:\\Users\\Ashish\\Desktop\\PREDICTIVE ANALYTICS\\predictive project')
+
+nyt_details=fread("NYT4MSBA6420.txt")
+
+names(nyt_details)=c('URL','date_collected','snippet','abstract','headline_main',
+                     'pub_date','news_desk','type_of_material','id','word_count',
+                     'text','facebook_like_count','facebook_share_count','googleplusone','twitter','pinterest','linkedIn')
+nyt_news1=fread("NYT4MSBA6420text.txt",nrows = 170763)
+
+names(nyt_news1)=c("URL","news")
+
+nyt_data=merge(nyt_details,nyt_news1,by.x="URL",by.y = "URL")
+
+
+
+apply(nyt_data,2,function(x) sum(is.na(x)))
+
+sapply(nyt_data, class)
+
+```
+
+```{r}
+
+#install.packages('tm')
+library(tm)
+
+#install.packages('topicmodels')
+library(topicmodels)
+
+
+#install.packages('SnowballC')
+library(SnowballC) 
+
+
+require(tm)
+
+
+```
+
+```{r}
+
+#install.packages('stringi')
+library('stringi')
+
+
+nyt_data<- nyt_data[!(nyt_data$news == "" | is.na(nyt_data$news)), ]
+
+nyt_data$news <- as.character(nyt_data$news)
+nyt_data$news <- tolower(nyt_data$news)
+nyt_data$news <- tm::removeNumbers(nyt_data$news)
+
+nyt_data$news <- stri_replace_all_fixed(nyt_data$news, "  ", "") # replace double spaces with single space
+
+nyt_data$news <- stri_replace_all_fixed(nyt_data$news, pattern = "[[:punct:]]", " ")
+
+nyt_data$news <- tm::removeWords(x = nyt_data$news, stopwords(kind = "SMART"))
+
+
+
+```
+
+```{r}
+
+corpus <- Corpus(VectorSource(nyt_data$news)) # turn into corpus
+
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers)
+
+# Convert all words to lowercase. 
+corpus <- tm_map(corpus, content_transformer(tolower))
+
+# Remove stopwords such as "a", "the", etc. 
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+
+# Use the SnowballC package to do stemming. 
+corpus <- tm_map(corpus, stemDocument)
+
+# Remove excess white spaces between words. 
+corpus <- tm_map(corpus, stripWhitespace)
+
+
+# Convert all documents to a term frequency matrix. 
+
+tfm <- DocumentTermMatrix(corpus)
+
+#tfm <- DocumentTermMatrix(corpus, control=list(bounds = list(global = c(100,5000))))
+
+
+
+```
+
+```{r}
+
+tfm<-removeSparseTerms(tfm, sparse=0.98)
+
+rowTotals <- apply(tfm , 1, sum) #Find the sum of words in each Document
+tfm.new   <- tfm[rowTotals> 0, ] 
+
+
+```
+
+```{r}
+
+#LDA ALGO 
+results <- LDA(tfm.new, k = 7, method = "Gibbs")
+inspect(tfm.new)
+
+# to check whether terms are significant :
+w=50
+thresh = 0.0015
+Terms <- terms(results, w,thresh)
+
+
+```
+
+
+```{r}
+
+#get probability of each topic in each doc
+topicProbabilities <- as.data.frame(results@gamma)
+write.csv(topicProbabilities,file=paste("results","TopicProbabilities.csv"))
+
+#each document assigned to 1 topic 
+t=1 
+Topic <- topics(results,t) 
+results_topics_matrix <- as.matrix(Topic)
+write.csv(results_topics_matrix,file=paste("results","DocsToTopics.csv"))
+
+#get top 10 terms in each topic
+ldaGibbs5.terms <- as.matrix(terms(results,10))
+write.csv(ldaGibbs5.terms,file=paste("results","TopicsToTerms_top10.csv"))
+
+#get top 25 terms in each topic
+ldaGibbs5.terms <- as.matrix(terms(results,25))
+write.csv(ldaGibbs5.terms,file=paste("results","TopicsToTerms_top25.csv"))
+
+#get top 50 terms in each topic
+ldaGibbs5.terms <- as.matrix(terms(results,50))
+write.csv(ldaGibbs5.terms,file=paste("results","TopicsToTerms_top50.csv"))
+
+#get top 100 terms in each topic
+ldaGibbs5.terms <- as.matrix(terms(results,100))
+write.csv(ldaGibbs5.terms,file=paste("results","TopicsToTerms_top100.csv"))
+
+
+```
+
+
+
+
