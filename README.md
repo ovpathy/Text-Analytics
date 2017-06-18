@@ -14,4 +14,5 @@ Topic modelling is done to treat words with multiple meanings differently. Got 7
 ### Age bias
 Articles having similar content will have varying number of shares depending on the age of the articles. Filtered the articles in every topic which have its age greater the mean age for that topic.
 
+### Model
 <br>Have used Boosting and ensemble techniques to train the model.
