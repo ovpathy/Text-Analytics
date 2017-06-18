@@ -1,4 +1,4 @@
-# Text-Analytics
+# Text Analytics
 A project to predict the number of Twitter shares of news articles of a leading news website, based on the content of the articles.
 
 ### TF-IDF
